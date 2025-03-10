@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { prisma } from "../../data/postgres";
+import { CreateTodoDto, UpdateTodoDto } from '../../domain/dtos';
 
 export class TodosController {
 
@@ -28,16 +29,16 @@ export class TodosController {
     }
 
     public postTodo = async (req: Request, res: Response) => {
-        
-        const { text } = req.body;
 
-        if(!text) {
-            res.status(400).json({ message: "Missing required fields" });
+        const [error, createTodoDto] = CreateTodoDto.create(req.body);
+
+        if(error){ 
+            res.status(400).json({error}) 
             return;
         }
 
         const todo = await prisma.todo.create({ 
-            data: { text } 
+            data: createTodoDto!
         });
 
         res.status(201).json(todo);
@@ -48,8 +49,10 @@ export class TodosController {
         
         const id = +req.params.id;
 
-        if(isNaN(id)){
-            res.status(400).json({ message: "Missing required fields" });
+        const [error, updateTodoDto] = UpdateTodoDto.create({...req.body, id});
+
+        if(error){
+            res.status(400).json({error});
             return;
         }
         
@@ -60,11 +63,9 @@ export class TodosController {
             return;
         }
 
-        const { text, completedAt } = req.body;
-
         const updated = await prisma.todo.update({
             where: { id },
-            data: { text, completedAt: (completedAt) ? new Date(completedAt) : null }
+            data: updateTodoDto!.values
         });
         
         res.json(updated);
